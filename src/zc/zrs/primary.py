@@ -370,9 +370,19 @@ class PrimaryProducer:
                         print("-- record.data {}".format(record.data))
                         print("-- record.oid {}".format(record.oid))
                         print("-- record.tid {}".format(record.tid))
-                        fname = self.storage.loadBlob(
-                            record.oid, record.tid)
-                        print("-- fname {}".format(fname))
+                        try:
+                            fname = self.storage.loadBlob(
+                                record.oid, record.tid)
+                            print("-- fname {}".format(fname))
+                        except (IOError, ZODB.POSException.POSKeyError):
+                            pass
+                        else:
+                            self.write(
+                                dump(('B',
+                                      (record.oid, record.tid, record.version,
+                                       record.data_txn, long(2)))))
+                            self.write(dump(('C', (self.md5.digest(), ))))
+                            continue
                     if record.data and is_blob_record(record.data) and False:
                         try:
                             fname = self.storage.loadBlob(

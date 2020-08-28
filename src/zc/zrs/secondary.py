@@ -110,13 +110,26 @@ class SecondaryProtocol(twisted.internet.protocol.Protocol):
 
             if self.__blob_file_blocks:
                 print("++++++++++ __blob_file_blocks : {}".format(self.__blob_file_blocks))
-                # We have to collect blob data
-                self.__blob_record = oid, serial, data, version, data_txn
+                print("-- oid: {}".format(oid))
+                print("-- serial: {}".format(serial))
+                try:
+                    fname = self.factory.storage.loadBlob(
+                        oid, serial)
+                    print("-- test fname: {}".format(fname))
+                except (IOError, ZODB.POSException.POSKeyError):
+                    print("++++++++++ERROR++++++++++")
+                else:
+                    self.factory.storage.restoreBlob(
+                        oid, serial, data, fname, data_txn,
+                        self._zrs_transaction)
 
-                (self.__blob_file_handle, self.__blob_file_name
-                 ) = tempfile.mkstemp('blob', 'secondary',
-                                      self.factory.storage.temporaryDirectory()
-                                      )
+                # We have to collect blob data
+                #self.__blob_record = oid, serial, data, version, data_txn
+
+                #(self.__blob_file_handle, self.__blob_file_name
+                # ) = tempfile.mkstemp('blob', 'secondary',
+                #                      self.factory.storage.temporaryDirectory()
+                #                      )
             else:
                 self.factory.storage.restore(
                     oid, serial, data, version, data_txn,
@@ -126,20 +139,22 @@ class SecondaryProtocol(twisted.internet.protocol.Protocol):
             print("++++++++++ WRITE BLOB ++++++++++")
             print("-- self.__blob_file_handle : {}".format(self.__blob_file_handle))
             print("-- message : {}".format(self.message))
-            os.write(self.__blob_file_handle, message)
-            self.__blob_file_blocks -= 1
-            if self.__blob_file_blocks == 0:
-                # We're done collecting data, we can write the data:
-                os.close(self.__blob_file_handle)
-                oid, serial, data, version, data_txn = self.__blob_record
-                self.__blob_record = None
-                self.factory.storage.restoreBlob(
-                    oid, serial, data, self.__blob_file_name, data_txn,
-                    self._zrs_transaction)
+
+            #os.write(self.__blob_file_handle, message)
+            #self.__blob_file_blocks -= 1
+            #if self.__blob_file_blocks == 0:
+            #    # We're done collecting data, we can write the data:
+            #    os.close(self.__blob_file_handle)
+            #    oid, serial, data, version, data_txn = self.__blob_record
+            #    self.__blob_record = None
+            #    self.factory.storage.restoreBlob(
+            #        oid, serial, data, self.__blob_file_name, data_txn,
+            #        self._zrs_transaction)
 
         else:
             # Ordinary message
             message_type, data = cPickle.loads(message)
+            print("++++++++++MESSAGE type:{}".format(message_type))
             if message_type == 'T':
                 assert self._zrs_transaction is None
                 assert self.__record is None
@@ -153,6 +168,8 @@ class SecondaryProtocol(twisted.internet.protocol.Protocol):
             elif message_type == 'B':
                 self.__record = data[:-1]
                 self.__blob_file_blocks = data[-1]
+                print("-- record : {}".format(self.__record))
+                print("-- __blob_file_blocks : {}".format(self.__blob_file_blocks))
             elif message_type == 'C':
                 self._check_replication_stream_checksum(data)
                 assert self._zrs_transaction is not None
