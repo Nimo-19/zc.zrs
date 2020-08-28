@@ -91,8 +91,15 @@ class SecondaryProtocol(twisted.internet.protocol.Protocol):
     __record = None
     def messageReceived(self, message):
         if self.__record:
+            print("++++++++++ Message record revieved")
             # store or store blob data record
             oid, serial, version, data_txn = self.__record
+            print("-- oid: {}".format(oid))
+            print("-- serial: {}".format(serial))
+            print("-- version: {}".format(version))
+            print("-- data_txn: {}".format(data_txn))
+            print("---- self.__record: {}".format(self.__record))
+
             self.__record = None
             data = message or None
             key = serial, version
@@ -102,6 +109,7 @@ class SecondaryProtocol(twisted.internet.protocol.Protocol):
             oids[oid] = 1
 
             if self.__blob_file_blocks:
+                print("++++++++++ __blob_file_blocks : {}".format(self.__blob_file_blocks))
                 # We have to collect blob data
                 self.__blob_record = oid, serial, data, version, data_txn
 
@@ -115,6 +123,9 @@ class SecondaryProtocol(twisted.internet.protocol.Protocol):
                     self._zrs_transaction)
 
         elif self.__blob_record:
+            print("++++++++++ WRITE BLOB ++++++++++")
+            print("-- self.__blob_file_handle : {}".format(self.__blob_file_handle))
+            print("-- message : {}".format(self.message))
             os.write(self.__blob_file_handle, message)
             self.__blob_file_blocks -= 1
             if self.__blob_file_blocks == 0:

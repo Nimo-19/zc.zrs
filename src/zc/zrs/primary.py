@@ -366,6 +366,14 @@ class PrimaryProducer:
                                         trans.description, trans._extension))))
                 for record in trans:
                     if record.data and is_blob_record(record.data):
+                        print("++++++++++THIS IS A BLOB++++++++++")
+                        print("-- record.data {}".format(record.data))
+                        print("-- record.oid {}".format(record.oid))
+                        print("-- record.tid {}".format(record.tid))
+                        fname = self.storage.loadBlob(
+                            record.oid, record.tid)
+                        print("-- fname {}".format(fname))
+                    if record.data and is_blob_record(record.data) and False:
                         try:
                             fname = self.storage.loadBlob(
                                 record.oid, record.tid)
