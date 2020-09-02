@@ -33,6 +33,8 @@ import ZODB.TimeStamp
 import ZODB.utils
 import zope.interface
 
+TEST = True
+
 try:
     long
 except NameError:
@@ -322,7 +324,10 @@ class PrimaryProducer:
             self.transport.writeSequence(data)
 
     def write(self, data):
+        print("++++")
+        # print("message: {}".format(data))
         data = zc.zrs.sizedmessage.marshals(data)
+        print("self.md5.digest() : {}".format(self.md5.digest()))
         self.md5.update(data[1])
         self.consumer_event.wait()
         self.callFromThread(self.cfr_write, data)
@@ -350,6 +355,7 @@ class PrimaryProducer:
         pickler = cPickle.Pickler(picklerf, 1)
         pickler.fast = 1
         def dump(data):
+            print("dump type: {}, data: {}".format(data[0], data[1]))
             picklerf.seek(0)
             picklerf.truncate()
             pickler.dump(data)
@@ -365,7 +371,7 @@ class PrimaryProducer:
                     dump(('T', (trans.tid, trans.status, trans.user,
                                         trans.description, trans._extension))))
                 for record in trans:
-                    if record.data and is_blob_record(record.data):
+                    if record.data and is_blob_record(record.data) and TEST:
                         print("++++++++++THIS IS A BLOB++++++++++")
                         print("-- record.data {}".format(record.data))
                         print("-- record.oid {}".format(record.oid))
@@ -380,17 +386,18 @@ class PrimaryProducer:
                             self.write(
                                 dump(('B',
                                       (record.oid, record.tid, record.version,
-                                       record.data_txn, long(2)))))
-                            self.write(dump(('C', (self.md5.digest(), ))))
+                                       record.data_txn, long(0)))))
                             continue
-                    if record.data and is_blob_record(record.data) and False:
+                    if record.data and is_blob_record(record.data) and not TEST:
                         try:
                             fname = self.storage.loadBlob(
                                 record.oid, record.tid)
                             f = open(fname, 'rb')
+                            print("++++FILE: {}".format(fname))
                         except (IOError, ZODB.POSException.POSKeyError):
                             pass
                         else:
+                            print("++++START SENDING FILE++++")
                             f.seek(0, 2)
                             blob_size = f.tell()
                             blocks, r = divmod(blob_size, blob_block_size)
@@ -409,8 +416,10 @@ class PrimaryProducer:
                                     raise AssertionError("Too much blob data")
                                 blocks -= 1
                                 self.write(data)
+                                print("++++SEND++++")
 
                             f.close()
+                            print("++++END SENDING FILE++++")
                             continue
 
                     self.write(
